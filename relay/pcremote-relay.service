@@ -1,0 +1,14 @@
+[Unit]
+Description=PC Remote relay
+After=network.target
+
+[Service]
+User=pcremote
+WorkingDirectory=/opt/pcremote
+Environment=RELAY_DB=/opt/pcremote/data/relay.json
+Environment=PORT=8080
+ExecStart=/opt/pcremote/venv/bin/python relay.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

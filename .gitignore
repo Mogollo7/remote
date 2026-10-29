@@ -1,0 +1,8 @@
+build/
+dist/
+__pycache__/
+*.pyc
+*.spec
+relay/web/downloads/*
+!relay/web/downloads/.gitkeep
+relay.json

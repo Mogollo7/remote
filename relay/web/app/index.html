@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<link rel="manifest" href="/app/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>PC Remote</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Silkscreen&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#E9E9E4;--panel:#F5F5F1;--ink:#111;--org:#FF5F1F;--mut:#6B6B66;--grn:#2DBE6C}
+*{box-sizing:border-box;margin:0}
+body{background:var(--paper);color:var(--ink);font:13px 'JetBrains Mono',monospace;min-height:100dvh;display:flex;flex-direction:column}
+header{display:flex;justify-content:space-between;align-items:center;padding:calc(14px + env(safe-area-inset-top)) 20px 12px;border-bottom:1px solid #0002;font-weight:700;font-size:11px}
+.led{display:inline-block;width:8px;height:8px;background:var(--mut);margin-left:6px}.on .led{background:var(--grn)}
+main{flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:14px;overflow:auto}
+h1{font:700 20px Syncopate,sans-serif}
+.box{background:var(--panel);border:1px solid var(--ink);padding:14px}
+.tag{background:var(--ink);color:var(--paper);font-size:10px;font-weight:700;padding:3px 6px;display:inline-block;margin-bottom:8px}
+.cat{width:96px;height:96px;margin:0 auto}
+input{width:100%;font:700 28px 'JetBrains Mono';letter-spacing:.3em;text-align:center;padding:12px;border:1px solid var(--ink);background:var(--panel)}
+button{font:700 12px 'JetBrains Mono';color:var(--ink);background:var(--panel);border:1.5px solid var(--ink);padding:14px 8px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+button.p{background:var(--org)}button.k{background:var(--ink);color:var(--paper)}button:active{opacity:.7}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.stats{display:flex;gap:10px}.stats .box{flex:1;padding:10px 12px}
+.stats b{font:28px Silkscreen;display:block}.mut{color:var(--mut);font-size:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.app{display:flex;flex-direction:column;gap:10px}.app .ic{width:44px;height:44px;border:1.5px solid var(--ink);display:grid;place-items:center;font:700 16px Syncopate;background:var(--paper)}
+.app .n{font:700 12px Syncopate}
+.kv{display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #1112;gap:12px}.kv:last-child{border:0}.kv span:first-child{color:var(--mut)}.kv span:last-child{font-weight:700;text-align:right;word-break:break-all}
+nav{display:flex;background:var(--panel);border-top:1px solid var(--ink);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;clip-path:none;background:none;padding:14px 4px;font-size:11px}nav button.a{background:var(--ink);color:var(--paper)}
+dialog{margin:auto;border:2px solid var(--ink);background:var(--panel);padding:22px;width:min(330px,90vw);text-align:center}
+dialog::backdrop{background:#0009}dialog h2{font:700 14px Syncopate;margin:10px 0}dialog p{color:var(--mut);margin-bottom:16px}
+#toast{position:fixed;left:20px;right:20px;bottom:90px;background:var(--ink);color:var(--paper);padding:12px;text-align:center;opacity:0;transition:.25s;pointer-events:none}#toast.s{opacity:1}
+[hidden]{display:none!important}
+</style></head><body>
+<header><span>PC_REMOTE // V1.0</span><span id="st">OFFLINE<i class="led"></i></span></header>
+
+<main id="connect" hidden>
+  <img class="cat" src="/icon-192.png" alt="">
+  <h1 style="text-align:center">CONECTAR</h1>
+  <p class="mut" style="text-align:center">Abre el programa PC Remote en tu computador y escribe el código de 6 dígitos que muestra.</p>
+  <input id="code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
+  <p id="err" style="color:#c00;text-align:center;min-height:1em"></p>
+  <button class="p" onclick="pair()">[ CONECTAR &gt; ]</button>
+</main>
+
+<main id="home" hidden>
+  <div class="box"><span class="tag" id="host">HOST</span><div id="os" class="mut"></div></div>
+  <div class="stats">
+    <div class="box"><span class="mut">CPU</span><b id="cpu">--</b></div>
+    <div class="box"><span class="mut">RAM</span><b id="ram">--</b></div>
+    <div class="box"><span class="mut">DISCO</span><b id="disk">--</b></div>
+  </div>
+  <div class="mut">/// ENERGÍA</div>
+  <div class="row">
+    <button class="p" onclick="toast('Encender necesita Wake-on-LAN (aún no configurado)')">ENCENDER</button>
+    <button onclick="ask('restart','¿Reiniciar el PC?')">REINICIAR</button>
+    <button class="k" onclick="ask('shutdown','¿Apagar el PC?')">APAGAR</button>
+  </div>
+  <div class="row">
+    <button onclick="cmd('sleep')">SUSPENDER</button>
+    <button onclick="cmd('lock')">BLOQUEAR</button>
+  </div>
+</main>
+
+<main id="apps" hidden>
+  <h1>APLICACIONES_</h1>
+  <div class="grid" id="grid"></div>
+  <p class="mut" id="noapps">Añade apps desde el programa en tu PC (botón + AÑADIR APP).</p>
+</main>
+
+<main id="infop" hidden>
+  <h1>SALUD_PC</h1>
+  <div class="box" id="kv"></div>
+  <button onclick="unpair()">DESVINCULAR ESTE CELULAR</button>
+</main>
+
+<nav id="nav" hidden>
+  <button data-s="home">INICIO</button><button data-s="apps">APPS</button><button data-s="infop">INFO</button>
+</nav>
+
+<dialog id="dlg"><div class="tag" style="background:var(--org);color:var(--ink)">ALERTA</div><h2 id="dq"></h2><p id="dn"></p>
+  <div class="row"><button onclick="dlg.close()">CANCELAR</button><button class="k" id="dok">CONFIRMAR</button></div></dialog>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), L=localStorage;
+let tok=L.tok, ws, online=false, name='PC', apps=[], info={}, tries=0;
+const dlg=$('#dlg');
+function show(id){document.querySelectorAll('main').forEach(m=>m.hidden=m.id!==id);$('#nav').hidden=id==='connect';
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('a',b.dataset.s===id))}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.s));
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('s');setTimeout(()=>e.classList.remove('s'),2200)}
+function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
+const cmd=(a,extra={})=>send({t:'cmd',a,...extra});
+function ask(a,q){$('#dq').textContent=q;$('#dn').textContent='La acción se ejecuta en tu PC ahora.';$('#dok').onclick=()=>{dlg.close();cmd(a)};dlg.showModal()}
+async function pair(){
+  const r=await fetch('/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:$('#code').value.trim()})});
+  if(!r.ok){$('#err').textContent=r.status===429?'Demasiados intentos, espera 1 minuto':'Código inválido o vencido';return}
+  const d=await r.json();L.tok=tok=d.token;start()}
+function unpair(){delete L.tok;tok=null;if(ws)ws.close();show('connect')}
+function start(){show('home');connect()}
+function connect(){
+  if(!tok)return;
+  ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/phone?token='+encodeURIComponent(tok));
+  ws.onopen=()=>{tries=0};
+  ws.onmessage=e=>{const d=JSON.parse(e.data);
+    if(d.t==='presence'){online=d.online;if(d.name)name=d.name;if(online){cmd('apps');cmd('info')}}
+    else if(d.t==='info')info=d;else if(d.t==='apps')apps=d.list;
+    else if(d.t==='ack')toast(d.ok?'Hecho':'El PC rechazó la orden');
+    render()};
+  ws.onclose=()=>{online=false;render();if(++tries>6){unpair();return}setTimeout(connect,2000)};
+}
+const fmt=s=>`${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`;
+function render(){
+  $('#st').innerHTML=(online?'EN LÍNEA':'PC APAGADO / SIN CONEXIÓN')+'<i class="led"></i>';$('#st').className=online?'on':'';
+  $('#host').textContent=(info.host||name).toUpperCase();$('#os').textContent=info.os||'';
+  $('#cpu').textContent=info.cpu!=null?Math.round(info.cpu)+'%':'--';$('#ram').textContent=info.ram!=null?Math.round(info.ram)+'%':'--';$('#disk').textContent=info.disk!=null?Math.round(info.disk)+'%':'--';
+  $('#grid').innerHTML='';$('#noapps').hidden=apps.length>0;
+  apps.forEach(n=>{const d=document.createElement('div');d.className='box app';
+    d.innerHTML=`<div class="ic">${n[0].toUpperCase()}</div><div class="n"></div><button>[ ABRIR &gt; ]</button>`;
+    d.querySelector('.n').textContent=n;d.querySelector('button').onclick=()=>{cmd('open',{app:n});toast('Abriendo '+n)};$('#grid').append(d)});
+  const rows=[['ESTADO',online?'● EN LÍNEA':'○ SIN CONEXIÓN'],['SISTEMA',info.os],['CPU',info.cpu_name],['RAM',info.ram_gb&&info.ram_gb+' GB'],
+    ['DISCO',info.disk_total_gb&&`${info.disk_used_gb} / ${info.disk_total_gb} GB`],['ENCENDIDO',info.uptime!=null&&fmt(info.uptime)],['IP',info.ip],['MAC',info.mac]];
+  $('#kv').innerHTML='';rows.forEach(([k,v])=>{if(!v)return;const r=document.createElement('div');r.className='kv';r.innerHTML='<span></span><span></span>';r.children[0].textContent=k;r.children[1].textContent=v;$('#kv').append(r)});
+}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'});
+const qc=new URLSearchParams(location.search).get('c');  // el QR del PC trae ?c=CODIGO
+if(qc)history.replaceState(null,'','/app/');
+if(tok)start();else{show('connect');if(qc){$('#code').value=qc;pair()}}
+</script></body></html>
