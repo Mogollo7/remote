@@ -1,9 +1,30 @@
+# --- generado por build.py (se recrea al compilar)
 build/
 dist/
-__pycache__/
-*.pyc
 *.spec
+agent/_server.py
+assets/icono.ico
 relay/web/downloads/*
 !relay/web/downloads/.gitkeep
+
+# --- datos locales / secretos
 relay.json
+config.json
+.env
+
+# --- Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# --- herramientas del editor y agentes (no son parte del producto)
+.claude/
 .agents/
+skills-lock.json
+.vscode/
+.idea/
+
+# --- sistema
+Thumbs.db
+.DS_Store

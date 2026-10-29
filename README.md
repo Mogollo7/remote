@@ -16,6 +16,8 @@ Nadie abre puertos: PC y celular se conectan hacia afuera al relay, que solo ree
 | `build.py` | Genera `dist/PCRemote-Setup.exe`, `PCRemote.exe` y `pcremote-server.zip` |
 | `test_e2e.py` | Prueba de emparejamiento, info y lista blanca |
 
+> **Antes de publicar, lee [DESPLIEGUE.md](DESPLIEGUE.md)**: qué activar y qué cambiar.
+
 ## Configuración
 - **Servidor:** `relay/CONFIGURACION.md` (VPS + Caddy + systemd).
 - **Compilar:** `pip install -r requirements.txt pyinstaller pillow segno` y `python build.py remote.tudominio.com`.

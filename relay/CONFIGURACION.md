@@ -67,7 +67,7 @@ sudo systemctl restart pcremote-relay
 ## Usar
 1. **PC:** ejecuta `PCRemote.exe`. Muestra un código de 6 dígitos (vale 10 min, un solo uso).
    Con **+ AÑADIR APP** eliges los programas que el celular podrá abrir.
-2. **Celular:** abre `https://remote.juanlabs.me`, escribe el código. Para instalarla como app:
+2. **Celular:** abre `https://mogollo7.github.io/remote/app/` (o `https://remote.juanlabs.me/app/`), escribe el código. Para instalarla como app:
    Chrome → menú ⋮ → *Instalar aplicación*; iPhone: Safari → Compartir → *Añadir a pantalla de inicio*.
 3. Cada compañero hace lo mismo con su PC y su celular; no comparten nada entre sí.
 

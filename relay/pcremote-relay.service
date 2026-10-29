@@ -6,6 +6,7 @@ After=network.target
 User=pcremote
 WorkingDirectory=/opt/pcremote
 Environment=RELAY_DB=/opt/pcremote/data/relay.json
+Environment=ALLOWED_ORIGINS=https://mogollo7.github.io
 Environment=PORT=8080
 ExecStart=/opt/pcremote/venv/bin/python relay.py
 Restart=always
