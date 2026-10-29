@@ -21,7 +21,8 @@ A = lambda p: os.path.join(root, p)
 pyi = lambda *a: subprocess.check_call([sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--clean",
                                         "--icon", A("assets/icono.ico"), "--distpath", A("dist"),
                                         "--workpath", A("build"), "--specpath", A("build"), *a])
-pyi("--name", "PCRemote", "--paths", A("agent"), "--add-data", f"{A('assets/icono-gato-512.png')};.", A("agent/gui.py"))
+pyi("--name", "PCRemote", "--paths", A("agent"), "--add-data", f"{A('assets/icono-gato-512.png')};.",
+    "--add-data", f"{A('assets/gato-base.png')};.", "--hidden-import", "PIL._tkinter_finder", A("agent/gui.py"))
 # instalador: lleva dentro PCRemote.exe y el gato
 pyi("--name", "PCRemote-Setup", "--add-data", f"{A('dist/PCRemote.exe')};.",
     "--add-data", f"{A('assets/icono-gato-512.png')};.", A("installer/setup.py"))

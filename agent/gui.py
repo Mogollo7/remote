@@ -72,7 +72,7 @@ def autostart(on=None):
             except FileNotFoundError:
                 return False
         if on and getattr(sys, "frozen", False):
-            winreg.SetValueEx(k, "PCRemote", 0, winreg.REG_SZ, f'"{sys.executable}"')
+            winreg.SetValueEx(k, "PCRemote", 0, winreg.REG_SZ, f'"{sys.executable}" --bg')
         elif not on:
             try:
                 winreg.DeleteValue(k, "PCRemote")
@@ -337,4 +337,18 @@ def tick():
 draw_apps()
 show("ESTADO")
 tick()
+import pet  # mascota flotante: el programa sigue en segundo plano aunque cierres la ventana
+
+
+def show_main(view="ESTADO"):
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+    show(view if isinstance(view, str) else "ESTADO")
+
+
+pet.start(root, agent, BASE, show_main)
+root.protocol("WM_DELETE_WINDOW", root.withdraw)
+if "--bg" in sys.argv:
+    root.withdraw()
 root.mainloop()

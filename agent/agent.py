@@ -50,6 +50,8 @@ def info():
 
 def handle(d):
     a = d.get("a")
+    if a not in ("info", "apps"):
+        state["last_cmd"] = time.time()  # la mascota reacciona
     if a == "info":
         return info()
     if a == "apps":
@@ -61,6 +63,8 @@ def handle(d):
         return {"t": "ack", "a": a, "app": d.get("app"), "ok": bool(app)}
     if a in POWER and NT and cfg.get("allow", {}).get("sleep_lock" if a in ("sleep", "lock") else a, True):
         subprocess.Popen(POWER[a])
+        if a in ("shutdown", "restart"):
+            state["alert"] = (a, time.time() + 5)  # cuenta regresiva en la mascota
         return {"t": "ack", "a": a, "ok": True}
     return {"t": "ack", "a": a, "ok": False}
 
