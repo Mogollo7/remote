@@ -1,0 +1,15 @@
+# Al crear un tag v*, compila el .exe en Windows y lo adjunta a la Release (de ahí se descarga)
+name: release
+on: { push: { tags: ["v*"] } }
+permissions: { contents: write }
+jobs:
+  win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - run: pip install -r requirements.txt pyinstaller pillow segno
+      - run: python build.py remote.juanlabs.me https://mogollo7.github.io/remote
+      - uses: softprops/action-gh-release@v2
+        with: { files: "dist/PCRemote-Setup.exe\ndist/pcremote-server.zip" }

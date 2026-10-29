@@ -51,6 +51,7 @@ curl -I https://remote.juanlabs.me/    # debe responder 200
 | Qué | Dónde | Valor por defecto |
 |---|---|---|
 | Puerto interno | `Environment=PORT=` en el `.service` | `8080` |
+| Webs permitidas (CORS) | `Environment=ALLOWED_ORIGINS=` | `https://mogollo7.github.io` |
 | Base de datos | `Environment=RELAY_DB=` | `/opt/pcremote/data/relay.json` |
 
 `relay.json` guarda los PCs registrados y los celulares emparejados (solo hashes). **Haz copia de ese

@@ -3,9 +3,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111111">
-<link rel="manifest" href="/app/manifest.json">
-<link rel="icon" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="../icon-192.png">
+<link rel="apple-touch-icon" href="../icon-192.png">
 <title>PC Remote</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Silkscreen&family=Syncopate:wght@700&display=swap" rel="stylesheet">
 <style>
@@ -39,7 +39,7 @@ dialog::backdrop{background:#0009}dialog h2{font:700 14px Syncopate;margin:10px 
 <header><span>PC_REMOTE // V1.0</span><span id="st">OFFLINE<i class="led"></i></span></header>
 
 <main id="connect" hidden>
-  <img class="cat" src="/icon-192.png" alt="">
+  <img class="cat" src="../icon-192.png" alt="">
   <h1 style="text-align:center">CONECTAR</h1>
   <p class="mut" style="text-align:center">Abre el programa PC Remote en tu computador y escribe el código de 6 dígitos que muestra.</p>
   <input id="code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
@@ -86,7 +86,9 @@ dialog::backdrop{background:#0009}dialog h2{font:700 14px Syncopate;margin:10px 
   <div class="row"><button onclick="dlg.close()">CANCELAR</button><button class="k" id="dok">CONFIRMAR</button></div></dialog>
 <div id="toast"></div>
 
+<script src="../config.js"></script>
 <script>
+const R=window.RELAY||'';
 const $=s=>document.querySelector(s), L=localStorage;
 let tok=L.tok, ws, online=false, name='PC', apps=[], info={}, tries=0;
 const dlg=$('#dlg');
@@ -97,19 +99,22 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('s');setTi
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
 const cmd=(a,extra={})=>send({t:'cmd',a,...extra});
 function ask(a,q){$('#dq').textContent=q;$('#dn').textContent='La acción se ejecuta en tu PC ahora.';$('#dok').onclick=()=>{dlg.close();cmd(a)};dlg.showModal()}
+function devName(){const u=navigator.userAgent;const m=u.match(/;\s*([^;)]+?)\s+Build/)||u.match(/Android[^;]*;\s*([^;)]+)/);
+  return /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':m?m[1]:/Android/.test(u)?'Android':'Navegador'}
 async function pair(){
-  const r=await fetch('/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:$('#code').value.trim()})});
+  const r=await fetch(R+'/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:$('#code').value.trim(),name:devName()})});
   if(!r.ok){$('#err').textContent=r.status===429?'Demasiados intentos, espera 1 minuto':'Código inválido o vencido';return}
   const d=await r.json();L.tok=tok=d.token;start()}
 function unpair(){delete L.tok;tok=null;if(ws)ws.close();show('connect')}
 function start(){show('home');connect()}
 function connect(){
   if(!tok)return;
-  ws=new WebSocket((location.protocol==='https:'?'wss':'ws')+'://'+location.host+'/ws/phone?token='+encodeURIComponent(tok));
+  ws=new WebSocket((R||location.origin).replace(/^http/,'ws')+'/ws/phone?token='+encodeURIComponent(tok));
   ws.onopen=()=>{tries=0};
   ws.onmessage=e=>{const d=JSON.parse(e.data);
     if(d.t==='presence'){online=d.online;if(d.name)name=d.name;if(online){cmd('apps');cmd('info')}}
     else if(d.t==='info')info=d;else if(d.t==='apps')apps=d.list;
+    else if(d.t==='forgotten'){toast('Este celular fue desvinculado desde el PC');setTimeout(unpair,800);return}
     else if(d.t==='ack')toast(d.ok?'Hecho':'El PC rechazó la orden');
     render()};
   ws.onclose=()=>{online=false;render();if(++tries>6){unpair();return}setTimeout(connect,2000)};
@@ -127,8 +132,8 @@ function render(){
     ['DISCO',info.disk_total_gb&&`${info.disk_used_gb} / ${info.disk_total_gb} GB`],['ENCENDIDO',info.uptime!=null&&fmt(info.uptime)],['IP',info.ip],['MAC',info.mac]];
   $('#kv').innerHTML='';rows.forEach(([k,v])=>{if(!v)return;const r=document.createElement('div');r.className='kv';r.innerHTML='<span></span><span></span>';r.children[0].textContent=k;r.children[1].textContent=v;$('#kv').append(r)});
 }
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/app/sw.js',{scope:'/app/'});
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 const qc=new URLSearchParams(location.search).get('c');  // el QR del PC trae ?c=CODIGO
-if(qc)history.replaceState(null,'','/app/');
+if(qc)history.replaceState(null,'',location.pathname);
 if(tok)start();else{show('connect');if(qc){$('#code').value=qc;pair()}}
 </script></body></html>

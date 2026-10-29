@@ -1,9 +1,10 @@
-"""Uso: python build.py remote.midominio.com
+"""Uso: python build.py remote.midominio.com [https://usuario.github.io/repo]
 Genera dist/PCRemote.exe (con el dominio dentro) y dist/pcremote-server.zip (para el VPS)."""
 import os, subprocess, sys, zipfile
 from PIL import Image
 
 domain = sys.argv[1].replace("https://", "").replace("wss://", "").strip("/")
+web = sys.argv[2].strip("/") if len(sys.argv) > 2 else ""  # p. ej. https://mogollo7.github.io/remote
 root = os.path.dirname(os.path.abspath(__file__))
 os.chdir(root)
 os.makedirs("dist", exist_ok=True)
@@ -15,7 +16,7 @@ for s in (192, 512):
     im.resize((s, s), Image.LANCZOS).save(f"relay/web/icon-{s}.png")
 
 # ejecutable
-open("agent/_server.py", "w").write(f'SERVER = "wss://{domain}"\n')
+open("agent/_server.py", "w").write(f'SERVER = "wss://{domain}"\nWEB = "{web}"\n')
 A = lambda p: os.path.join(root, p)
 pyi = lambda *a: subprocess.check_call([sys.executable, "-m", "PyInstaller", "--onefile", "--noconsole", "--clean",
                                         "--icon", A("assets/icono.ico"), "--distpath", A("dist"),

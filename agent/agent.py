@@ -7,13 +7,17 @@ try:
     from _server import SERVER as _BAKED  # lo escribe build.py con el dominio real
 except ImportError:
     _BAKED = "wss://TU-DOMINIO.com"
+try:
+    from _server import WEB as _WEB  # página de la app (GitHub Pages); si falta se usa el propio servidor
+except ImportError:
+    _WEB = ""
 HOME = os.environ.get("PCREMOTE_HOME") or os.path.join(os.environ.get("APPDATA", "."), "PCRemote")
 CFG = os.path.join(HOME, "config.json")
 os.makedirs(HOME, exist_ok=True)
 cfg = json.load(open(CFG)) if os.path.exists(CFG) else {"apps": []}  # apps: [{"name","path"}]
 SERVER = os.environ.get("PCREMOTE_SERVER") or cfg.get("server") or _BAKED  # "server" en config.json: solo para pruebas
 save = lambda: json.dump(cfg, open(CFG, "w"), indent=2)
-state = {"code": None, "online": False, "ws": None, "loop": None, "phones": 0}  # la ventana lee esto
+state = {"code": None, "online": False, "ws": None, "loop": None, "phones": 0, "plist": []}  # la ventana lee esto
 NT = os.name == "nt"
 POWER = {
     "shutdown": ["shutdown", "/s", "/t", "5"],
@@ -66,6 +70,11 @@ def new_code():  # lo llama la ventana (otro hilo)
         asyncio.run_coroutine_threadsafe(state["ws"].send(json.dumps({"t": "code"})), state["loop"])
 
 
+def forget(pid):  # lo llama la ventana: el relay borra el celular y lo desconecta
+    if state["ws"] and state["loop"]:
+        asyncio.run_coroutine_threadsafe(state["ws"].send(json.dumps({"t": "forget", "id": pid})), state["loop"])
+
+
 async def push(ws):
     while True:
         await asyncio.sleep(5)
@@ -91,7 +100,7 @@ async def run():
                             state["code"] = d["code"]
                             print(f"CODIGO: {d['code']}", flush=True)
                         elif d["t"] == "phones":
-                            state["phones"] = d["n"]
+                            state.update(phones=d["n"], plist=d.get("list", []))
                         elif d["t"] == "error":
                             cfg.pop("id", None)  # ponytail: PC olvidado por el servidor, se re-registra
                             save()

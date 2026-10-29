@@ -25,3 +25,11 @@ Nadie abre puertos: PC y celular se conectan hacia afuera al relay, que solo ree
 ## QA
 - `python test_e2e.py` → emparejamiento, código de un solo uso, token inválido, info y lista blanca (OK).
 - Pendiente: probar energía (apagar/reiniciar/suspender/bloquear) en Windows real, tráfico real con HTTPS, Wake-on-LAN (no implementado) y "olvidar celular".
+
+## GitHub sirve la web, el servidor solo conecta
+- **GitHub Pages** (workflow `pages.yml`) publica `relay/web` en `https://mogollo7.github.io/remote/`: landing y app del celular.
+  Actívalo una vez: *Settings → Pages → Source: GitHub Actions*.
+- **GitHub Releases** (workflow `release.yml`, sin probar): al subir un tag `v1.0` compila `PCRemote-Setup.exe` en Windows y lo adjunta; la landing lo descarga de ahí.
+- **remote.juanlabs.me** solo hace de relay (`/ws/pc`, `/ws/phone`, `/pair`, `/health`). Permite CORS desde `ALLOWED_ORIGINS` (por defecto `https://mogollo7.github.io`).
+- `python build.py remote.juanlabs.me https://mogollo7.github.io/remote` hornea ambas URLs en el .exe (el QR apunta a Pages).
+- La URL del relay para la web está en `relay/web/config.js`.

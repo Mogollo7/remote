@@ -1,5 +1,5 @@
 """Ventana del ejecutable: réplica del diseño de Figma (Estado / Aplicaciones / Ajustes)."""
-import asyncio, os, sys, threading, tkinter as tk
+import asyncio, os, sys, threading, time, tkinter as tk
 from tkinter import filedialog
 import segno
 import agent
@@ -9,6 +9,7 @@ HEAD = ("Bahnschrift SemiBold", 20)  # ancho, parecido a Syncopate; si falta, Tk
 mono = lambda n, b=False: ("Consolas", n, "bold" if b else "normal")
 BASE = getattr(sys, "_MEIPASS", os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets"))
 URL = agent.SERVER.replace("wss://", "https://").replace("ws://", "http://")
+WEB = agent._WEB or URL  # donde vive la app del celular
 RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
 threading.Thread(target=lambda: asyncio.run(agent.run()), daemon=True).start()
 
@@ -120,7 +121,7 @@ def show(n):
     navs[n].config(bg=INK, fg=PAPER)
 
 
-for n in ("ESTADO", "APLICACIONES", "AJUSTES"):
+for n in ("ESTADO", "APLICACIONES", "CELULARES", "AJUSTES"):
     navs[n] = tk.Label(side, text=n, font=mono(11, True), bg=PANEL, fg=INK, anchor="w", padx=20, pady=13, cursor="hand2")
     navs[n].pack(fill="x", pady=2)
     navs[n].bind("<Button-1>", lambda e, n=n: show(n))
@@ -154,12 +155,13 @@ CB(cp, "NUEVO CÓDIGO", 170, 36, agent.new_code, fs=10).pack(anchor="w", padx=14
 up = panel(col)
 up.pack(fill="x", pady=12)
 tag(up, "URL DEL CELULAR").pack(anchor="w", padx=14, pady=(12, 4))
-tk.Label(up, text=URL, font=mono(12, True), bg=PANEL, fg=INK).pack(anchor="w", padx=14, pady=(0, 12))
+tk.Label(up, text=WEB, font=mono(12, True), bg=PANEL, fg=INK).pack(anchor="w", padx=14, pady=(0, 12))
 sp = panel(col)
 sp.pack(fill="x")
 st_v = kv(sp, "ESTADO", "")
 ph_v = kv(sp, "CELULARES CONECTADOS", "0")
 kv(sp, "EQUIPO", agent.platform.node(), last=True)
+tk.Label(col, image=logo.subsample(7, 7), bg=PAPER).pack(anchor="e", pady=(8, 0))
 
 shown = {"code": object()}
 
@@ -169,7 +171,7 @@ def draw_qr(text):
     if not text:
         qr.create_text(110, 110, text="···", font=mono(20), fill=MUT)
         return
-    m = list(segno.make(f"{URL}/app/?c={text}", error="m").matrix)
+    m = list(segno.make(f"{WEB}/app/?c={text}", error="m").matrix)
     u = 220 / (len(m) + 4)
     for y, r in enumerate(m):
         for x, b in enumerate(r):
@@ -248,6 +250,49 @@ def draw_apps():
         tk.Frame(rows, bg="#CFCFCB", height=1).pack(fill="x")
 
 
+# ---------------- CELULARES
+v = views["CELULARES"]
+tk.Label(v, text="CELULARES_", font=HEAD, bg=PAPER, fg=INK).pack(anchor="w")
+tk.Label(v, text="Celulares emparejados con este PC. OLVIDAR corta el acceso al instante.", font=mono(10), bg=PAPER, fg=MUT).pack(anchor="w", pady=(2, 0))
+pl = panel(v)
+pl.pack(fill="both", expand=True, pady=16)
+prow = tk.Frame(pl, bg=PANEL)
+prow.pack(fill="both", expand=True, padx=16, pady=6)
+mascot = logo.subsample(5, 5)
+drawn = {"p": None}
+
+
+def forget_phone(pid):
+    agent.forget(pid)
+    drawn["p"] = None  # se redibuja cuando el relay confirme
+
+
+def draw_phones():
+    lst = agent.state["plist"]
+    sig = repr(lst)
+    if sig == drawn["p"]:
+        return
+    drawn["p"] = sig
+    for w in prow.winfo_children():
+        w.destroy()
+    if not lst:
+        e = tk.Frame(prow, bg=PANEL)
+        e.pack(expand=True)
+        tk.Label(e, image=mascot, bg=PANEL).pack(pady=(30, 8))
+        tk.Label(e, text="Ningún celular emparejado.\nEscanea el QR de ESTADO con la app.", font=mono(10), bg=PANEL, fg=MUT, justify="center").pack()
+    for p in lst:
+        r = tk.Frame(prow, bg=PANEL)
+        r.pack(fill="x", pady=8)
+        tk.Label(r, text="●", font=mono(12), bg=PANEL, fg=GRN if p["online"] else MUT).pack(side="left")
+        t = tk.Frame(r, bg=PANEL)
+        t.pack(side="left", padx=12)
+        tk.Label(t, text=p["name"].upper(), font=("Bahnschrift SemiBold", 11), bg=PANEL, fg=INK).pack(anchor="w")
+        ago = time.strftime("%d/%m %H:%M", time.localtime(p["seen"])) if p["seen"] else "—"
+        tk.Label(t, text=("CONECTADO AHORA" if p["online"] else "SIN CONEXIÓN") + f" · VISTO {ago}", font=mono(9), bg=PANEL, fg=MUT).pack(anchor="w")
+        CB(r, "OLVIDAR", 100, 32, lambda i=p["id"]: forget_phone(i), fill=INK, fg=PAPER, fs=9).pack(side="right")
+        tk.Frame(prow, bg="#CFCFCB", height=1).pack(fill="x")
+
+
 # ---------------- AJUSTES
 v = views["AJUSTES"]
 tk.Label(v, text="AJUSTES_", font=HEAD, bg=PAPER, fg=INK).pack(anchor="w")
@@ -280,6 +325,7 @@ def tick():
     led_t.config(text="SERVIDOR ACTIVO" if on else "SIN CONEXIÓN")
     st_v.config(text="● ACTIVO" if on else "○ SIN CONEXIÓN", fg=GRN if on else ORG)
     ph_v.config(text=str(agent.state["phones"]))
+    draw_phones()
     c = agent.state["code"]
     if c != shown["code"]:
         shown["code"] = c
