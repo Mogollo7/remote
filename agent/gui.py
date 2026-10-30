@@ -1,5 +1,5 @@
 """Ventana del ejecutable: réplica del diseño de Figma (Estado / Aplicaciones / Ajustes)."""
-import asyncio, os, sys, threading, time, tkinter as tk
+import asyncio, json, os, subprocess, sys, threading, time, tkinter as tk
 from tkinter import filedialog
 import segno
 from PIL import Image, ImageTk
@@ -227,6 +227,57 @@ def save_app():
         draw_apps()
 
 
+START_APPS = r"""[Console]::OutputEncoding=[Text.Encoding]::UTF8
+$pk=@{}; Get-AppxPackage | ForEach-Object { $pk[$_.PackageFamilyName]=$_.InstallLocation }
+Get-StartApps | ForEach-Object { $id=$_.AppID; $exe=$null
+  if ($id -match '^(.+)!(.+)$') { $loc=$pk[$matches[1]]; $aid=$matches[2]
+    if ($loc) { try { [xml]$m=Get-Content (Join-Path $loc 'AppxManifest.xml')
+      $x=$m.Package.Applications.Application | Where-Object Id -eq $aid; if ($x.Executable) { $exe=Split-Path $x.Executable -Leaf } } catch {} } }
+  elseif ($id -like '*.exe') { $exe=Split-Path $id -Leaf }
+  [pscustomobject]@{name=$_.Name; id=$id; exe=$exe} } | ConvertTo-Json -Compress"""
+
+
+def pick_installed():  # lista del menú Inicio: evita elegir un .exe ayudante y sirve para apps de la Store
+    w = tk.Toplevel(root, bg=PAPER)
+    w.title("APPS INSTALADAS")
+    w.geometry("440x540")
+    w.transient(root)
+    q = tk.StringVar()
+    tk.Entry(w, textvariable=q, font=mono(12), relief="solid", bd=1).pack(fill="x", padx=16, pady=(16, 8), ipady=6)
+    lb = tk.Listbox(w, font=mono(11), relief="solid", bd=1, activestyle="none", selectbackground=ORG, selectforeground=INK)
+    lb.pack(fill="both", expand=True, padx=16)
+    lb.insert("end", "Cargando apps instaladas…")
+    data, shown = [], []
+
+    def fill(*_):
+        lb.delete(0, "end")
+        shown[:] = [a for a in data if q.get().lower() in a["name"].lower()]
+        for a in shown:
+            lb.insert("end", a["name"])
+
+    def load():
+        try:
+            out = subprocess.run(["powershell", "-NoProfile", "-Command", START_APPS], capture_output=True,
+                                 creationflags=0x08000000, timeout=90).stdout.decode("utf-8", "replace")
+            r = json.loads(out or "[]")
+            data[:] = sorted([r] if isinstance(r, dict) else r, key=lambda a: a["name"].lower())
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+        root.after(0, fill)
+
+    def add(*_):
+        if lb.curselection() and shown:
+            a = shown[lb.curselection()[0]]
+            agent.cfg["apps"] = [x for x in agent.cfg["apps"] if x["name"] != a["name"]] +                 [{"name": a["name"], "path": agent.SHELL + a["id"], "exe": a.get("exe") or ""}]
+            agent.save()
+            draw_apps()
+            w.destroy()
+    q.trace_add("write", fill)
+    lb.bind("<Double-Button-1>", add)
+    CB(w, "[ AÑADIR ]", 200, 40, add, fill=ORG, fs=11).pack(pady=14)
+    threading.Thread(target=load, daemon=True).start()
+
+
 def drop(i):
     del agent.cfg["apps"][i]
     agent.save()
@@ -235,7 +286,7 @@ def drop(i):
 
 CB(form, "EXAMINAR", 222, 34, browse, fs=10).pack(padx=16, pady=(10, 4))
 CB(form, "[ GUARDAR ]", 222, 42, save_app, fill=INK, fg=PAPER, fs=11).pack(padx=16, pady=(4, 16))
-CB(hd, "+ AÑADIR APP", 150, 38, browse, fill=ORG, fs=10).pack(side="right")
+CB(hd, "+ AÑADIR APP", 150, 38, pick_installed, fill=ORG, fs=10).pack(side="right")
 rows = tk.Frame(lst, bg=PANEL)
 rows.pack(fill="both", expand=True, padx=16, pady=6)
 
@@ -256,7 +307,9 @@ def draw_apps():
         t.pack(side="left", padx=12)
         tk.Label(t, text=a["name"].upper(), font=("Bahnschrift SemiBold", 11), bg=PANEL, fg=INK).pack(anchor="w")
         p = a["path"]
-        tk.Label(t, text=p if len(p) < 46 else p[:44] + "…", font=mono(9), bg=PANEL, fg=MUT).pack(anchor="w")
+        bad = not p.startswith("shell:") and not os.path.exists(p)
+        txt = "APP INSTALADA (MENÚ INICIO)" if p.startswith("shell:") else ("⚠ YA NO EXISTE · " if bad else "") + (p if len(p) < 46 else p[:44] + "…")
+        tk.Label(t, text=txt, font=mono(9), bg=PANEL, fg=ORG if bad else MUT).pack(anchor="w")
         x = tk.Label(r, text="QUITAR", font=mono(9, True), bg=PANEL, fg=INK, cursor="hand2")
         x.pack(side="right")
         x.bind("<Button-1>", lambda e, i=i: drop(i))

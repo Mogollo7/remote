@@ -338,7 +338,7 @@ class Pet:
         if not ag.cfg["apps"]:
             tk.Label(body, text="Añade apps en APLICACIONES.", font=mono(10), bg=PANEL, fg=MUT).pack(anchor="w", padx=16, pady=6)
         for a in ag.cfg["apps"]:
-            f, o = s.app_icons(a, os.path.basename(a["path"]).lower() in run)
+            f, o = s.app_icons(a, ag.pname(a) in run)
             s.keep += [f, o]
             row(a["name"].upper(), lambda a=a: ag.handle({"a": "open", "app": a["name"]}), f, o, "ABRIR >")
         sec("/// PC")

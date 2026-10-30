@@ -26,6 +26,17 @@ POWER = {
     "lock": ["rundll32.exe", "user32.dll,LockWorkStation"],
 }
 psutil.cpu_percent()
+SHELL = "shell:AppsFolder\\"  # apps del menú Inicio / Microsoft Store: se abren por su AppID, no por un .exe
+pname = lambda x: (x.get("exe") or os.path.basename(x["path"])).lower()  # proceso, para saber si corre y cerrarla
+
+
+def launch(path):
+    if path.startswith("shell:"):
+        subprocess.Popen(["explorer.exe", path])
+    elif NT:
+        os.startfile(path)  # como doble clic: abre .lnk y pide permisos de admin si hace falta
+    else:
+        subprocess.Popen([path])
 
 
 def my_ip():
@@ -57,17 +68,17 @@ def handle(d):
     if a == "apps":
         run = {(p.info["name"] or "").lower() for p in psutil.process_iter(["name"])}
         return {"t": "apps", "list": [x["name"] for x in cfg["apps"]],
-                "running": [x["name"] for x in cfg["apps"] if os.path.basename(x["path"]).lower() in run]}
+                "running": [x["name"] for x in cfg["apps"] if pname(x) in run]}
     if a == "close":  # solo apps de la lista; sin /F = cierre normal (la app puede pedir guardar)
         app = next((x for x in cfg["apps"] if x["name"] == d.get("app")), None)
-        ok = bool(app) and NT and cfg.get("allow", {}).get("close", True)
+        ok = bool(app) and NT and pname(app).endswith(".exe") and cfg.get("allow", {}).get("close", True)
         if ok:
-            subprocess.Popen(["taskkill", "/IM", os.path.basename(app["path"])], creationflags=0x08000000)
+            subprocess.Popen(["taskkill", "/IM", pname(app)], creationflags=0x08000000)
         return {"t": "ack", "a": a, "app": d.get("app"), "ok": ok}
     if a == "open":
         app = next((x for x in cfg["apps"] if x["name"] == d.get("app")), None)
-        try:  # startfile = como doble clic: abre .lnk y pide permisos de admin si la app los necesita
-            os.startfile(app["path"]) if app and NT else app and subprocess.Popen([app["path"]])
+        try:
+            app and launch(app["path"])
         except OSError:  # ruta borrada, cancelaron el permiso, etc.: se rechaza la orden, no se cae la conexión
             app = None
         return {"t": "ack", "a": a, "app": d.get("app"), "ok": bool(app)}
