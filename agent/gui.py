@@ -93,7 +93,7 @@ root.title("PC_REMOTE_SERVER.EXE")
 root.configure(bg=PAPER)
 root.geometry("960x620")
 root.resizable(False, False)
-with Image.open(os.path.join(BASE, "icono-gato.webp")) as _cat:  # solo los tamaños que se usan, no la de 512 px
+with Image.open(os.path.join(BASE, "gato-icono.webp")) as _cat:  # solo los tamaños que se usan, no la de 512 px
     pic = {s: ImageTk.PhotoImage(_cat.resize((s, s), Image.LANCZOS)) for s in (40, 64, 73, 102)}
 root.iconphoto(True, pic[64])
 

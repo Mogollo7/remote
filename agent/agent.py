@@ -66,8 +66,10 @@ def handle(d):
         return {"t": "ack", "a": a, "app": d.get("app"), "ok": ok}
     if a == "open":
         app = next((x for x in cfg["apps"] if x["name"] == d.get("app")), None)
-        if app:
-            subprocess.Popen([app["path"]])
+        try:  # startfile = como doble clic: abre .lnk y pide permisos de admin si la app los necesita
+            os.startfile(app["path"]) if app and NT else app and subprocess.Popen([app["path"]])
+        except OSError:  # ruta borrada, cancelaron el permiso, etc.: se rechaza la orden, no se cae la conexión
+            app = None
         return {"t": "ack", "a": a, "app": d.get("app"), "ok": bool(app)}
     if a in POWER and NT and cfg.get("allow", {}).get("sleep_lock" if a in ("sleep", "lock") else a, True):
         subprocess.Popen(POWER[a])
@@ -118,7 +120,11 @@ async def run():
                             cfg.pop("id", None)  # ponytail: PC olvidado por el servidor, se re-registra
                             save()
                         elif d["t"] == "cmd":
-                            await ws.send(json.dumps(handle(d)))
+                            try:
+                                r = handle(d)
+                            except Exception:  # ponytail: cualquier fallo de una orden se responde como rechazo, nunca corta el WebSocket
+                                r = {"t": "ack", "a": d.get("a"), "ok": False}
+                            await ws.send(json.dumps(r))
                 finally:
                     task.cancel()
         except (OSError, websockets.WebSocketException):
