@@ -40,6 +40,8 @@ with zipfile.ZipFile("dist/pcremote-server.zip", "w", zipfile.ZIP_DEFLATED) as z
     for f in ["relay.py", "requirements.txt", "pcremote-relay.service", "Caddyfile", "CONFIGURACION.md"]:
         z.write(f"relay/{f}", f)
     for d, _, fs in os.walk("relay/web"):
+        if "downloads" in d:  # los instaladores se descargan de GitHub; el servidor solo conecta
+            continue
         for f in fs:
             p = os.path.join(d, f)
             z.write(p, os.path.relpath(p, "relay"))
