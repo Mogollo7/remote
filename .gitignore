@@ -28,3 +28,12 @@ skills-lock.json
 # --- sistema
 Thumbs.db
 .DS_Store
+
+# --- APK (Capacitor): solo se versiona el código, no lo compilado
+apk/node_modules/
+apk/android/.gradle/
+apk/android/build/
+apk/android/app/build/
+apk/android/capacitor-cordova-android-plugins/build/
+apk/android/local.properties
+!relay/web/downloads/PCRemote.apk

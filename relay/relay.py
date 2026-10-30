@@ -9,6 +9,7 @@ db = json.load(open(DB)) if os.path.exists(DB) else {"pcs": {}, "phones": {}}
 for _k, _v in db["phones"].items():  # formato viejo: solo el id del PC
     if isinstance(_v, str):
         db["phones"][_k] = {"pc": _v, "name": "Celular", "seen": 0}
+KIND = lambda k: k if k in ("apk", "pwa", "web") else "web"  # cómo usa la app ese celular
 h = lambda s: hashlib.sha256(s.encode()).hexdigest()
 save = lambda: json.dump(db, open(DB, "w"))
 codes, pc_ws, phone_ws, tries = {}, {}, {}, {}  # codigo->(pc,exp), pc->ws, pc->{ws}, ip->[t]
@@ -29,7 +30,7 @@ def phones_of(pc):  # celulares emparejados de un PC: {hash: {"pc","name","seen"
 async def tell_pc(pc):  # el PC muestra los celulares emparejados y cuáles están conectados
     if pc in pc_ws:
         live = set(phone_ws.get(pc, {}).values())
-        lst = [{"id": k[:12], "name": v["name"], "online": k in live, "seen": v["seen"]} for k, v in phones_of(pc).items()]
+        lst = [{"id": k[:12], "name": v["name"], "online": k in live, "seen": v["seen"], "kind": v.get("kind", "web")} for k, v in phones_of(pc).items()]
         await pc_ws[pc].send_json({"t": "phones", "n": len(live), "list": lst})
 
 
@@ -103,7 +104,7 @@ async def pair(req):
         return web.json_response({"e": "code"}, status=400)
     tok = secrets.token_urlsafe(32)
     name = str(body.get("name") or "Celular")[:40]
-    db["phones"][h(tok)] = {"pc": c[0], "name": name, "seen": int(now)}
+    db["phones"][h(tok)] = {"pc": c[0], "name": name, "seen": int(now), "kind": KIND(body.get("kind"))}
     save()
     return web.json_response({"token": tok, "name": db["pcs"][c[0]]["name"], "online": c[0] in pc_ws})
 
@@ -113,7 +114,7 @@ async def ws_phone(req):
     pc = db["phones"].get(ph, {}).get("pc")
     if not pc:
         return web.Response(status=401)
-    db["phones"][ph]["seen"] = int(time.time())
+    db["phones"][ph].update(seen=int(time.time()), kind=KIND(req.query.get("kind")))
     ws = web.WebSocketResponse(heartbeat=25, max_msg_size=65536)
     await ws.prepare(req)
     phone_ws.setdefault(pc, {})[ws] = ph

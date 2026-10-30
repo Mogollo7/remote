@@ -55,7 +55,15 @@ def handle(d):
     if a == "info":
         return info()
     if a == "apps":
-        return {"t": "apps", "list": [x["name"] for x in cfg["apps"]]}
+        run = {(p.info["name"] or "").lower() for p in psutil.process_iter(["name"])}
+        return {"t": "apps", "list": [x["name"] for x in cfg["apps"]],
+                "running": [x["name"] for x in cfg["apps"] if os.path.basename(x["path"]).lower() in run]}
+    if a == "close":  # solo apps de la lista; sin /F = cierre normal (la app puede pedir guardar)
+        app = next((x for x in cfg["apps"] if x["name"] == d.get("app")), None)
+        ok = bool(app) and NT and cfg.get("allow", {}).get("close", True)
+        if ok:
+            subprocess.Popen(["taskkill", "/IM", os.path.basename(app["path"])], creationflags=0x08000000)
+        return {"t": "ack", "a": a, "app": d.get("app"), "ok": ok}
     if a == "open":
         app = next((x for x in cfg["apps"] if x["name"] == d.get("app")), None)
         if app:
@@ -82,7 +90,8 @@ def forget(pid):  # lo llama la ventana: el relay borra el celular y lo desconec
 async def push(ws):
     while True:
         await asyncio.sleep(5)
-        await ws.send(json.dumps(info()))
+        if state["phones"]:  # nadie mirando = no se mide ni se envía nada
+            await ws.send(json.dumps(info()))
 
 
 async def run():

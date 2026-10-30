@@ -25,10 +25,12 @@ def work_area():
 def cat_image(base_png, d):
     """Disco de papel con el gato (sin ojos) dentro, sobre el color transparente. d = lado en px."""
     big = 4 * d
-    cat = Image.open(base_png).convert("RGB").resize((int(big * K), int(big * K)), Image.LANCZOS)
+    with Image.open(base_png) as src:
+        cat = src.convert("RGB").resize((int(big * K), int(big * K)), Image.LANCZOS)
+    bgc = cat.getpixel((1, 1))  # mismo color que el fondo del gato: así no se ve un cuadrado dentro del círculo
     disc = Image.new("L", (big, big), 0)
     ImageDraw.Draw(disc).ellipse((2, 2, big - 3, big - 3), fill=255)
-    img = Image.new("RGB", (big, big), rgb(PANEL))
+    img = Image.new("RGB", (big, big), bgc)
     img.paste(cat, (int(big * OX / 270), int(big * OY / 270)))
     ImageDraw.Draw(img).ellipse((2, 2, big - 3, big - 3), outline=rgb(INK), width=max(2, big // 40))
     out = Image.new("RGB", (big, big), rgb(KEY))
@@ -75,8 +77,8 @@ class Pet:
         s.win.attributes("-transparentcolor", KEY)
         s.cv = tk.Canvas(s.win, width=WIN, height=WIN, bg=KEY, highlightthickness=0, cursor="hand2")
         s.cv.pack()
-        s.imgs = {sc: ImageTk.PhotoImage(cat_image(os.path.join(base, "gato-base.png"), int(BASE_PX * sc))) for sc in (1.0, 1.08)}
-        s.small = ImageTk.PhotoImage(cat_image(os.path.join(base, "gato-base.png"), 28))
+        s.imgs = {sc: ImageTk.PhotoImage(cat_image(os.path.join(base, "gato-base.webp"), int(BASE_PX * sc))) for sc in (1.0, 1.08)}
+        s.small = ImageTk.PhotoImage(cat_image(os.path.join(base, "gato-base.webp"), 28))
         s.last_act = time.time()
         s.last_phones, s.last_cmd_seen = 0, 0
         s.next_blink, s.blink_until = time.time() + 5, 0
@@ -187,7 +189,8 @@ class Pet:
         if sig != s.sig:
             s.sig = sig
             s.draw(expr, look, st["phones"], asleep, hov, alert, blink_on)
-        s.win.after(400 if asleep else 50, s.tick)
+        # 20 fps solo si el mouse está cerca y despierta; si no, se revisa pocas veces (menos CPU)
+        s.win.after(500 if asleep else 50 if dist < 600 or hov else 300, s.tick)
 
     def P(s, vx, vy):  # coordenada del visor (espacio 270) -> píxel del lienzo
         return (s.c0 + (OX + (63 + vx) * K) * s.u, s.c0 + (OY + (86 + vy) * K) * s.u)

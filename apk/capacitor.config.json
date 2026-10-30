@@ -1,0 +1,6 @@
+{
+  "appId": "com.mogollo7.pcremote",
+  "appName": "PC Remote",
+  "webDir": "www",
+  "server": { "url": "https://mogollo7.github.io/remote/app/", "cleartext": false }
+}

@@ -17,7 +17,7 @@ async def main():
         async with aiohttp.ClientSession() as s:
             bad = await s.post(f"http://127.0.0.1:{PORT}/pair", json={"code": "000000"})
             assert bad.status == 400, "código falso debe fallar"
-            r = await (await s.post(f"http://127.0.0.1:{PORT}/pair", json={"code": code, "name": "Pixel Test"})).json()
+            r = await (await s.post(f"http://127.0.0.1:{PORT}/pair", json={"code": code, "name": "Pixel Test", "kind": "apk"})).json()
             assert r["online"], r
             reuse = await s.post(f"http://127.0.0.1:{PORT}/pair", json={"code": code})
             assert reuse.status == 400, "el código es de un solo uso"
@@ -30,6 +30,8 @@ async def main():
                 assert msg["t"] == "info" and "cpu" in msg, msg
                 await ws.send_json({"t": "cmd", "a": "open", "app": "no-existe"})
                 assert (await ws.receive_json())["ok"] is False, "app fuera de la lista debe rechazarse"
+                await ws.send_json({"t": "cmd", "a": "close", "app": "no-existe"})
+                assert (await ws.receive_json())["ok"] is False, "solo se cierran apps de la lista"
             # el PC ve el celular y puede olvidarlo (el test hace de PC: el agente real se apaga antes)
             agent.kill()
             cfg = json.load(open(os.path.join(tmp, "config.json")))
@@ -39,7 +41,7 @@ async def main():
                 while not (lst and lst[0]["online"]):
                     m = await asyncio.wait_for(pc.receive_json(), 5)
                     lst = m.get("list") if m["t"] == "phones" else lst
-                assert lst[0]["name"] == "Pixel Test", lst
+                assert lst[0]["name"] == "Pixel Test" and lst[0]["kind"] == "web", lst  # el ws del test no manda kind
                 await pc.send_json({"t": "forget", "id": lst[0]["id"]})
                 while (await asyncio.wait_for(ph.receive_json(), 5))["t"] != "forgotten":
                     pass

@@ -102,7 +102,7 @@ def run_install():
 
     body = tk.Frame(r, bg=PAPER)
     body.pack(fill="both", expand=True, padx=28, pady=18)
-    img = tk.PhotoImage(file=os.path.join(BASE, "icono-gato-512.png")).subsample(4, 4)
+    img = tk.PhotoImage(file=os.path.join(BASE, "gato-128.png"))
     tk.Label(body, image=img, bg=PAPER).grid(row=0, column=0, rowspan=3, sticky="n", padx=(0, 18))
     tk.Label(body, text="INSTALAR\nPC REMOTE", font=("Consolas", 20, "bold"), bg=PAPER, fg=INK, justify="left").grid(row=0, column=1, sticky="w")
     tk.Label(body, text="Controla tu PC desde el celular.", font=mono(10), bg=PAPER, fg=MUT).grid(row=1, column=1, sticky="w")

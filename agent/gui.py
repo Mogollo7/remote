@@ -2,6 +2,7 @@
 import asyncio, os, sys, threading, time, tkinter as tk
 from tkinter import filedialog
 import segno
+from PIL import Image, ImageTk
 import agent
 
 INK, PAPER, PANEL, ORG, MUT, GRN = "#111111", "#E9E9E4", "#F5F5F1", "#FF5F1F", "#6B6B66", "#2DBE6C"
@@ -92,8 +93,9 @@ root.title("PC_REMOTE_SERVER.EXE")
 root.configure(bg=PAPER)
 root.geometry("960x620")
 root.resizable(False, False)
-logo = tk.PhotoImage(file=os.path.join(BASE, "icono-gato-512.png"))
-root.iconphoto(True, logo.subsample(8, 8))
+with Image.open(os.path.join(BASE, "icono-gato.webp")) as _cat:  # solo los tamaños que se usan, no la de 512 px
+    pic = {s: ImageTk.PhotoImage(_cat.resize((s, s), Image.LANCZOS)) for s in (40, 64, 73, 102)}
+root.iconphoto(True, pic[64])
 
 side = tk.Frame(root, bg=PANEL, width=210, highlightbackground=INK, highlightthickness=1)
 side.pack(side="left", fill="y")
@@ -103,7 +105,7 @@ content.pack(side="left", fill="both", expand=True, padx=28, pady=24)
 
 lg = tk.Frame(side, bg=PANEL)
 lg.pack(fill="x", padx=16, pady=(20, 16))
-small = logo.subsample(13, 13)
+small = pic[40]
 tk.Label(lg, image=small, bg=PANEL).pack(side="left")
 lt = tk.Frame(lg, bg=PANEL)
 lt.pack(side="left", padx=8)
@@ -161,7 +163,7 @@ sp.pack(fill="x")
 st_v = kv(sp, "ESTADO", "")
 ph_v = kv(sp, "CELULARES CONECTADOS", "0")
 kv(sp, "EQUIPO", agent.platform.node(), last=True)
-tk.Label(col, image=logo.subsample(7, 7), bg=PAPER).pack(anchor="e", pady=(8, 0))
+tk.Label(col, image=pic[73], bg=PAPER).pack(anchor="e", pady=(8, 0))
 
 shown = {"code": object()}
 
@@ -258,7 +260,7 @@ pl = panel(v)
 pl.pack(fill="both", expand=True, pady=16)
 prow = tk.Frame(pl, bg=PANEL)
 prow.pack(fill="both", expand=True, padx=16, pady=6)
-mascot = logo.subsample(5, 5)
+mascot = pic[102]
 drawn = {"p": None}
 
 
@@ -286,7 +288,11 @@ def draw_phones():
         tk.Label(r, text="●", font=mono(12), bg=PANEL, fg=GRN if p["online"] else MUT).pack(side="left")
         t = tk.Frame(r, bg=PANEL)
         t.pack(side="left", padx=12)
-        tk.Label(t, text=p["name"].upper(), font=("Bahnschrift SemiBold", 11), bg=PANEL, fg=INK).pack(anchor="w")
+        nm = tk.Frame(t, bg=PANEL)
+        nm.pack(anchor="w")
+        tk.Label(nm, text=p["name"].upper(), font=("Bahnschrift SemiBold", 11), bg=PANEL, fg=INK).pack(side="left")
+        k = {"apk": ("APP ANDROID", ORG, INK), "pwa": ("PWA", INK, PAPER)}.get(p.get("kind"), ("NAVEGADOR", PAPER, INK))
+        tag(nm, k[0], k[1], k[2]).pack(side="left", padx=8)
         ago = time.strftime("%d/%m %H:%M", time.localtime(p["seen"])) if p["seen"] else "—"
         tk.Label(t, text=("CONECTADO AHORA" if p["online"] else "SIN CONEXIÓN") + f" · VISTO {ago}", font=mono(9), bg=PANEL, fg=MUT).pack(anchor="w")
         CB(r, "OLVIDAR", 100, 32, lambda i=p["id"]: forget_phone(i), fill=INK, fg=PAPER, fs=9).pack(side="right")
@@ -304,6 +310,7 @@ for k, d, on, cmd in (
     ("PERMITIR APAGAR", "Desde el celular", A.get("shutdown", True), allow("shutdown")),
     ("PERMITIR REINICIAR", "Desde el celular", A.get("restart", True), allow("restart")),
     ("PERMITIR SUSPENDER Y BLOQUEAR", "Desde el celular", A.get("sleep_lock", True), allow("sleep_lock")),
+    ("PERMITIR CERRAR APPS", "Solo las de tu lista, cierre normal", A.get("close", True), allow("close")),
 ):
     r = tk.Frame(op, bg=PANEL)
     r.pack(fill="x", padx=18, pady=10)
@@ -331,7 +338,7 @@ def tick():
         shown["code"] = c
         code.config(text=" ".join(c) if c else "· · · · · ·")
         draw_qr(c)
-    root.after(500, tick)
+    root.after(1000, tick)
 
 
 draw_apps()

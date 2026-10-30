@@ -39,7 +39,7 @@ dialog::backdrop{background:#0009}dialog h2{font:700 14px Syncopate;margin:10px 
 <header><span>PC_REMOTE // V1.0</span><span id="st">OFFLINE<i class="led"></i></span></header>
 
 <main id="connect" hidden>
-  <img class="cat" src="../icon-192.png" alt="">
+  <img class="cat" src="../icon-192.webp" alt="">
   <h1 style="text-align:center">CONECTAR</h1>
   <p class="mut" style="text-align:center">Abre el programa PC Remote en tu computador y escribe el código de 6 dígitos que muestra.</p>
   <input id="code" inputmode="numeric" maxlength="6" placeholder="······" autocomplete="off">
@@ -90,7 +90,7 @@ dialog::backdrop{background:#0009}dialog h2{font:700 14px Syncopate;margin:10px 
 <script>
 const R=window.RELAY||'';
 const $=s=>document.querySelector(s), L=localStorage;
-let tok=L.tok, ws, online=false, name='PC', apps=[], info={}, tries=0;
+let tok=L.tok, ws, online=false, name='PC', apps=[], running=[], info={}, tries=0;
 const dlg=$('#dlg');
 function show(id){document.querySelectorAll('main').forEach(m=>m.hidden=m.id!==id);$('#nav').hidden=id==='connect';
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('a',b.dataset.s===id))}
@@ -99,21 +99,22 @@ function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('s');setTi
 function send(o){if(ws&&ws.readyState===1)ws.send(JSON.stringify(o))}
 const cmd=(a,extra={})=>send({t:'cmd',a,...extra});
 function ask(a,q){$('#dq').textContent=q;$('#dn').textContent='La acción se ejecuta en tu PC ahora.';$('#dok').onclick=()=>{dlg.close();cmd(a)};dlg.showModal()}
+const kind=()=>window.Capacitor?.isNativePlatform?.()?'apk':(matchMedia('(display-mode: standalone)').matches||navigator.standalone)?'pwa':'web';
 function devName(){const u=navigator.userAgent;const m=u.match(/;\s*([^;)]+?)\s+Build/)||u.match(/Android[^;]*;\s*([^;)]+)/);
   return /iPhone/.test(u)?'iPhone':/iPad/.test(u)?'iPad':m?m[1]:/Android/.test(u)?'Android':'Navegador'}
 async function pair(){
-  const r=await fetch(R+'/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:$('#code').value.trim(),name:devName()})});
+  const r=await fetch(R+'/pair',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code:$('#code').value.trim(),name:devName(),kind:kind()})});
   if(!r.ok){$('#err').textContent=r.status===429?'Demasiados intentos, espera 1 minuto':'Código inválido o vencido';return}
   const d=await r.json();L.tok=tok=d.token;start()}
 function unpair(){delete L.tok;tok=null;if(ws)ws.close();show('connect')}
 function start(){show('home');connect()}
 function connect(){
   if(!tok)return;
-  ws=new WebSocket((R||location.origin).replace(/^http/,'ws')+'/ws/phone?token='+encodeURIComponent(tok));
+  ws=new WebSocket((R||location.origin).replace(/^http/,'ws')+'/ws/phone?kind='+kind()+'&token='+encodeURIComponent(tok));
   ws.onopen=()=>{tries=0};
   ws.onmessage=e=>{const d=JSON.parse(e.data);
     if(d.t==='presence'){online=d.online;if(d.name)name=d.name;if(online){cmd('apps');cmd('info')}}
-    else if(d.t==='info')info=d;else if(d.t==='apps')apps=d.list;
+    else if(d.t==='info')info=d;else if(d.t==='apps'){apps=d.list;running=d.running||[]}
     else if(d.t==='forgotten'){toast('Este celular fue desvinculado desde el PC');setTimeout(unpair,800);return}
     else if(d.t==='ack')toast(d.ok?'Hecho':'El PC rechazó la orden');
     render()};
@@ -125,9 +126,11 @@ function render(){
   $('#host').textContent=(info.host||name).toUpperCase();$('#os').textContent=info.os||'';
   $('#cpu').textContent=info.cpu!=null?Math.round(info.cpu)+'%':'--';$('#ram').textContent=info.ram!=null?Math.round(info.ram)+'%':'--';$('#disk').textContent=info.disk!=null?Math.round(info.disk)+'%':'--';
   $('#grid').innerHTML='';$('#noapps').hidden=apps.length>0;
-  apps.forEach(n=>{const d=document.createElement('div');d.className='box app';
-    d.innerHTML=`<div class="ic">${n[0].toUpperCase()}</div><div class="n"></div><button>[ ABRIR &gt; ]</button>`;
-    d.querySelector('.n').textContent=n;d.querySelector('button').onclick=()=>{cmd('open',{app:n});toast('Abriendo '+n)};$('#grid').append(d)});
+  apps.forEach(n=>{const d=document.createElement('div');d.className='box app';const on=running.includes(n);
+    d.innerHTML=`<div class="ic">${n[0].toUpperCase()}</div><div class="n"></div><button>[ ABRIR &gt; ]</button>`+(on?'<button class="k">[ CERRAR × ]</button>':'');
+    d.querySelector('.n').textContent=n+(on?' ●':'');const b=d.querySelectorAll('button');
+    b[0].onclick=()=>{cmd('open',{app:n});toast('Abriendo '+n);setTimeout(()=>cmd('apps'),2500)};
+    if(b[1])b[1].onclick=()=>{cmd('close',{app:n});toast('Cerrando '+n);setTimeout(()=>cmd('apps'),2500)};$('#grid').append(d)});
   const rows=[['ESTADO',online?'● EN LÍNEA':'○ SIN CONEXIÓN'],['SISTEMA',info.os],['CPU',info.cpu_name],['RAM',info.ram_gb&&info.ram_gb+' GB'],
     ['DISCO',info.disk_total_gb&&`${info.disk_used_gb} / ${info.disk_total_gb} GB`],['ENCENDIDO',info.uptime!=null&&fmt(info.uptime)],['IP',info.ip],['MAC',info.mac]];
   $('#kv').innerHTML='';rows.forEach(([k,v])=>{if(!v)return;const r=document.createElement('div');r.className='kv';r.innerHTML='<span></span><span></span>';r.children[0].textContent=k;r.children[1].textContent=v;$('#kv').append(r)});
