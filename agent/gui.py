@@ -12,6 +12,17 @@ BASE = getattr(sys, "_MEIPASS", os.path.join(os.path.dirname(os.path.abspath(__f
 URL = agent.SERVER.replace("wss://", "https://").replace("ws://", "http://")
 WEB = agent._WEB or URL  # donde vive la app del celular
 RUN = r"Software\Microsoft\Windows\CurrentVersion\Run"
+# una sola copia: dos agentes con la misma identidad se echan del servidor uno a otro (conexión intermitente)
+SHOW_FLAG = os.path.join(agent.HOME, "show.flag")
+if os.name == "nt":
+    import ctypes
+    _k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _mutex = _k32.CreateMutexW(None, False, r"Local\PCRemoteAgent")
+    if ctypes.get_last_error() == 183:  # ya hay una abierta: le pide que muestre su ventana y se va
+        open(SHOW_FLAG, "w").close()
+        sys.exit(0)
+if os.path.exists(SHOW_FLAG):  # aviso viejo de una corrida anterior
+    os.remove(SHOW_FLAG)
 threading.Thread(target=lambda: asyncio.run(agent.run()), daemon=True).start()
 
 
@@ -333,6 +344,9 @@ def tick():
     st_v.config(text="● ACTIVO" if on else "○ SIN CONEXIÓN", fg=GRN if on else ORG)
     ph_v.config(text=str(agent.state["phones"]))
     draw_phones()
+    if os.path.exists(SHOW_FLAG):  # alguien abrió el programa otra vez
+        os.remove(SHOW_FLAG)
+        show_main()
     c = agent.state["code"]
     if c != shown["code"]:
         shown["code"] = c

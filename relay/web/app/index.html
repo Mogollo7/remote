@@ -118,7 +118,7 @@ function connect(){
     else if(d.t==='forgotten'){toast('Este celular fue desvinculado desde el PC');setTimeout(unpair,800);return}
     else if(d.t==='ack')toast(d.ok?'Hecho':'El PC rechazó la orden');
     render()};
-  ws.onclose=()=>{online=false;render();if(++tries>6){unpair();return}setTimeout(connect,2000)};
+  ws.onclose=()=>{online=false;render();setTimeout(connect,Math.min(2000*++tries,15000))};  // reintenta siempre; solo se desvincula si el PC lo olvida
 }
 const fmt=s=>`${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`;
 function render(){
