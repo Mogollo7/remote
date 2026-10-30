@@ -19,7 +19,7 @@ def sh(*cmd):
 def shortcut(lnk, target):
     sh("powershell", "-NoProfile", "-Command",
        f"$s=(New-Object -ComObject WScript.Shell).CreateShortcut('{lnk}');$s.TargetPath='{target}';"
-       f"$s.WorkingDirectory='{os.path.dirname(target)}';$s.Save()")
+       f"$s.WorkingDirectory='{os.path.dirname(target)}';$s.IconLocation='{target},0';$s.Save()")
 
 
 def install(folder, desk, auto, step):
